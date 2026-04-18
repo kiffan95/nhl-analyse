@@ -9,7 +9,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- CACHER LE RESTE ---
+# --- CACHER LE RESTE (Menu, Header, Footer) ---
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -18,7 +18,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- SYSTÈME D'ÉTOILES ---
+# --- SYSTÈME D'ÉTOILES (75+ = 6 etoiles / 65+ = 5 etoiles) ---
 def obtenir_etoiles(note):
     if note >= 75: return "⭐⭐⭐⭐⭐⭐"
     elif note >= 65: return "⭐⭐⭐⭐⭐"
@@ -26,21 +26,17 @@ def obtenir_etoiles(note):
     elif note >= 45: return "⭐⭐⭐"
     else: return "⭐⭐"
 
-# --- 1. TON ALGO AVEC PONDÉRATION MISE À JOUR (40/25/10/20/5) ---
-def calculer_score_final(dyn, ratio_h2h_carriere, l10_loc, reb_exp, opp_gaa_10, avg_h2h, pp_val, pk_opp, w_h2h):
-    # Régularité 20 matchs (40%)
+# --- 1. TON ALGO ORIGINAL MODIFIÉ (LOGIQUE 40/25/10/20/5) ---
+def calculer_score_final(dyn, h5, l10_loc, reb_exp, opp_gaa_10, avg_h2h, pp_val, pk_opp, w_h2h):
     score = (dyn['ratio'] * 100 * 0.40) 
-    # H2H TOUTES SAISONS (25%) - ratio_h2h_carriere est déjà un ratio (pts/matchs)
-    score += (min(ratio_h2h_carriere, 1.2) / 1.2 * 100 * 0.25) 
-    # Localisation (10%)
-    score += (l10_loc * 10 * 0.10)
-    # Défense adverse (20%)
+    score += (h5 * 20 * 0.25)  # Changé de 0.20 à 0.25 (25%)
+    score += (l10_loc * 10 * 0.10) # Changé de 0.15 à 0.10 (10%)
     score += (min(opp_gaa_10 / 4.5, 1) * 100 * 0.20) 
-    # Victoires H2H (5%)
     score += (w_h2h * 5 * 0.05)
     
-    # BONUS
-    if (pp_val or 0) > 22 and (pk_opp or 100) < 78: score += 10
+    pp_calc = pp_val if isinstance(pp_val, (int, float)) else 0
+    pk_calc = pk_opp if isinstance(pk_opp, (int, float)) else 100
+    if pp_calc > 22 and pk_calc < 78: score += 10
     if avg_h2h > 5.8: score += 5
     if reb_exp: score += 10 
     return round(score, 1)
@@ -53,20 +49,6 @@ def obtenir_stats_ligue():
         data = requests.get(url).json().get('standings', [])
         return {t['teamAbbrev']['default']: {'pp': round(t.get('powerPlayPct', 0)*100, 1), 'pk': round(t.get('penaltyKillPct', 0)*100, 1)} for t in data}
     except: return {}
-
-def obtenir_h2h_toutes_saisons(player_id, opp_abbrev):
-    """Va chercher le cumul de points en carrière contre l'adversaire"""
-    try:
-        url = f"https://api-web.nhle.com/v1/player/{player_id}/stats/now"
-        data = requests.get(url).json()
-        for split in data.get('splits', []):
-            if split.get('opponentAbbrev') == opp_abbrev:
-                gp = split.get('gamesPlayed', 0)
-                pts = split.get('points', 0)
-                ratio = pts / gp if gp > 0 else 0
-                return ratio, f"{pts} pts en {gp} matchs"
-        return 0, "0 pts / 0 m"
-    except: return 0, "N/A"
 
 def verifier_rebond_expert(logs):
     recent = logs[:15]
@@ -85,7 +67,7 @@ def obtenir_matchup_data(team_a, team_b):
         w_h2h = sum(1 for g in h2h if (g['homeTeam']['abbrev'] == team_a and g['homeTeam']['score'] > g['awayTeam']['score']) or (g['awayTeam']['abbrev'] == team_a and g['awayTeam']['score'] > g['homeTeam']['score']))
         ga_vs = round(sum(g['homeTeam']['score'] if g['awayTeam']['abbrev'] == team_a else g['awayTeam']['score'] for g in h2h) / len(h2h) , 2) if h2h else 3.0
         return gaa_10, w_h2h, len(h2h), 5.8, ga_vs
-    except: return 3.2, 0, 0, 5.8, 3.0
+    except: return 3.2, 0, 0, 5.5, 3.0
 
 # --- 3. INTERFACE ---
 st.title("🏒 ANALYSE POINTEURS NHL")
@@ -93,17 +75,10 @@ date_match = st.date_input("Date du scan :", value=datetime.now())
 
 if st.button('LANCER LE SCAN 🚀', use_container_width=True):
     stats_ligue = obtenir_stats_ligue()
-    # Formatage de la date pour l'API
-    date_str = date_match.strftime("%Y-%m-%d")
-    url_score = f"https://api-web.nhle.com/v1/score/{date_str}"
+    url_score = f"https://api-web.nhle.com/v1/score/{date_match}"
     
-    with st.spinner('Analyse des carrières en cours...'):
-        resp = requests.get(url_score)
-        if resp.status_code != 200:
-            st.error("Impossible de joindre l'API NHL.")
-            st.stop()
-        
-        games = resp.json().get('games', [])
+    with st.spinner('Analyse en cours...'):
+        games = requests.get(url_score).json().get('games', [])
         results_global = []
 
         for g in games:
@@ -117,27 +92,37 @@ if st.button('LANCER LE SCAN 🚀', use_container_width=True):
                     roster = requests.get(f"https://api-web.nhle.com/v1/roster/{team}/current").json()
                     for p in (roster.get('forwards', []) + roster.get('defensemen', [])):
                         try:
-                            # 1. Stats récentes (Logique de base)
                             logs = requests.get(f"https://api-web.nhle.com/v1/player/{p['id']}/game-log/now").json().get('gameLog', [])
-                            if len(logs) < 15: continue
+                            if len(logs) < 20: continue
                             
+                            # Logique de pertinence (Palier dynamique)
+                            p5 = sum(1 for m in logs[:5] if m['points'] > 0)
+                            p10 = sum(1 for m in logs[:10] if m['points'] > 0)
+                            p15 = sum(1 for m in logs[:15] if m['points'] > 0)
                             p20 = sum(1 for m in logs[:20] if m['points'] > 0)
-                            l10_loc = sum(1 for m in [m for m in logs if m['homeRoadFlag'] == ('H' if team == h else 'R')][:10] if m['points'] > 0)
+                            
+                            # Choix du palier à afficher : Priorité à la série "Hot"
+                            if p5 >= 4: palier_display = f"{p5}/5"
+                            elif p10 >= 8: palier_display = f"{p10}/10"
+                            elif p15 >= 12: palier_display = f"{p15}/15"
+                            else: palier_display = f"{p20}/20"
+
+                            dyn = {"ratio": p20/20, "count": p20}
                             reb = verifier_rebond_expert(logs)
-                            
-                            # 2. H2H CARRIÈRE COMPLÈTE (Toutes saisons)
-                            ratio_h2h, label_h2h = obtenir_h2h_toutes_saisons(p['id'], opp)
-                            
+                            l10_loc = sum(1 for m in [m for m in logs if m['homeRoadFlag'] == ('H' if team == h else 'R')][:10] if m['points'] > 0)
+                            h5 = sum(1 for m in [m for m in logs if m['opponentAbbrev'] == opp][:5] if m['points'] > 0)
                             m_t, m_o = memo[team], memo[opp]
-                            note = calculer_score_final({"ratio": p20/20}, ratio_h2h, l10_loc, reb, m_o[0], m_t[3], 
-                                                        stats_ligue.get(team, {}).get('pp'), stats_ligue.get(opp, {}).get('pk'), m_t[1])
                             
-                            if note > 35:
+                            note = calculer_score_final(dyn, h5, l10_loc, reb, m_o[0], m_t[3], stats_ligue.get(team, {}).get('pp', 0), stats_ligue.get(opp, {}).get('pk', 0), m_t[1])
+                            
+                            if note > 30:
                                 results_global.append({
-                                    'id': p['id'], 'nom': f"{p['firstName']['default']} {p['lastName']['default']}",
+                                    'id': p['id'],
+                                    'nom': f"{p['firstName']['default']} {p['lastName']['default']}",
                                     'team': team, 'opp': opp, 'note': note, 'reb': reb, 
-                                    'p20': f"{p20}/20", 'h2h_txt': label_h2h, 'gaa': m_o[0], 
-                                    'loc': loc_label, 'l10_loc': l10_loc
+                                    'palier': palier_display, 'h5': h5, 'gaa': m_o[0], 
+                                    'ga_h2h': m_o[4], 'w_h2h': m_t[1], 't_h2h': m_t[2],
+                                    'loc': loc_label, 'l10_loc': l10_loc, 'avg': m_t[3]
                                 })
                         except: continue
                 except: continue
@@ -145,14 +130,23 @@ if st.button('LANCER LE SCAN 🚀', use_container_width=True):
         if results_global:
             top_20 = sorted(results_global, key=lambda x: x['note'], reverse=True)[:20]
             st.success(f"Scan terminé : {len(top_20)} joueurs trouvés.")
+            
             for p in top_20:
                 with st.container(border=True):
                     col_img, col_info = st.columns([1, 2])
-                    with col_img: st.image(f"https://assets.nhle.com/mugs/nhl/latest/{p['id']}.png", width=110)
+                    with col_img:
+                        st.image(f"https://assets.nhle.com/mugs/nhl/latest/{p['id']}.png", width=110)
                     with col_info:
                         st.markdown(f"## {p['nom'].upper()}")
-                        st.markdown(f"<h3 style='color:#FFD700;'>{obtenir_etoiles(p['note'])}</h3>", unsafe_allow_html=True)
+                        st.markdown(f"<h3 style='color:#FFD700; margin-bottom:0;'>{obtenir_etoiles(p['note'])}</h3>", unsafe_allow_html=True)
                         st.caption(f"Note : {p['note']}/100 | {p['team']} vs {p['opp']}")
-                    st.write(f"📈 **RÉGULARITÉ** : ➤ {p['p20']} (20 derniers) | ➤ {p['l10_loc']}/10 à {p['loc']}")
-                    st.write(f"📜 **HISTORIQUE CARRIÈRE vs {p['opp']}** : ➤ {p['h2h_txt']}")
-                    if p['reb']: st.info("🎯 Pattern de rebond détecté")
+
+                    st.markdown("---")
+                    st.write(f"📈 **RÉGULARITÉ** : ➤ a pointé dans {p['palier']} derniers matchs ➤ a pointé dans ({p['l10_loc']}) des 10 derniers matchs à {p['loc']}")
+                    
+                    reb_txt = "OUI" if p['reb'] else "NON"
+                    st.write(f"🎯 **PATTERN** : ➤ {reb_txt} (15 derniers matchs)")
+                    st.write(f"⚔️ **FACE-A-FACE** : ➤ a pointé dans {p['h5']} des 5 dernières confrontations ➤ Moyenne de {p['avg']} buts entre les deux équipes")
+                    st.write(f"🛡️ **DÉFENSE ADVERSE** : ➤ encaisse en moyenne {p['gaa']} (10 derniers matchs) ➤ encaisse en moyenne {p['ga_h2h']} contre {p['team']}")
+        else:
+            st.error("Aucun résultat.")
