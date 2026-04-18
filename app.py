@@ -146,11 +146,11 @@ if st.button('LANCER LE SCAN 🚀', use_container_width=True):
                         st.caption(f"Note : {p['note']}/100 | {p['team']} vs {p['opp']}")
 
                     st.markdown("---")
-                    st.write(f"📈 **RÉGULARITÉ** : ➤ a pointé dans {p['palier']} derniers matchs ➤ a pointé dans ({p['l10_loc']}) des 10 derniers matchs à {p['loc']}")
+                    st.write(f"📈 **RÉGULARITÉ** : ➤ a pointé dans ses {p['palier']} derniers matchs ➤ a pointé dans ses {p['l10_loc']}/10 derniers matchs à {p['loc']}")
                     
                     reb_txt = "OUI" if p['reb'] else "NON"
                     st.write(f"🎯 **PATTERN** : ➤ {reb_txt} (15 derniers matchs)")
-                    st.write(f"⚔️ **FACE-A-FACE** : ➤ a pointé dans {p['h5']} sur ses {p['nb_matchs_h2h']} dernières présences vs {p['opp']} ➤ Moyenne de {p['avg']} buts entre les deux équipes")
-                    st.write(f"🛡️ **DÉFENSE ADVERSE** : ➤ encaisse en moyenne {p['gaa']} (10 derniers matchs) ➤ encaisse en moyenne {p['ga_h2h']} contre {p['team']}")
+                    st.write(f"⚔️ **FACE-A-FACE** : ➤ a pointé dans {p['h5']} sur ses {p['nb_matchs_h2h']} derniers matchs vs {p['opp']}")
+                    st.write(f"🛡️ **DÉFENSE** : ➤ {p['opp']} encaisse en moyenne {p['gaa']} (10 derniers matchs) ➤ {p['opp']} encaisse en moyenne {p['ga_h2h']} contre {p['team']} ➤ Moyenne de {p['avg']} buts entre les deux équipes")
         else:
             st.error("Aucun résultat.")
