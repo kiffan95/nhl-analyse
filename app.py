@@ -4,7 +4,7 @@ from datetime import datetime
 
 # --- CONFIGURATION DE LA PAGE ---
 st.set_page_config(
-    page_title="ANALYSE NHL",  # Ce titre remplacera le gros texte bleu
+    page_title="ANALYSE NHL",
     page_icon="🏒",
     layout="centered"
 )
@@ -22,8 +22,8 @@ st.markdown("""
 def obtenir_etoiles(note):
     if note >= 75: return "⭐⭐⭐⭐⭐⭐"
     elif note >= 65: return "⭐⭐⭐⭐⭐"
-    elif note >= 50: return "⭐⭐⭐⭐"
-    elif note >= 35: return "⭐⭐⭐"
+    elif note >= 55: return "⭐⭐⭐⭐"
+    elif note >= 45: return "⭐⭐⭐"
     else: return "⭐⭐"
 
 # --- 1. TON ALGO ORIGINAL (LOGIQUE 40/20/15/20/5) ---
@@ -65,13 +65,13 @@ def obtenir_matchup_data(team_a, team_b):
         gaa_10 = round(sum(g['awayTeam']['score'] if g['homeTeam']['abbrev'] == team_a else g['homeTeam']['score'] for g in past[:10]) / 10, 2)
         h2h = [g for g in past if (g['homeTeam']['abbrev'] == team_b or g['awayTeam']['abbrev'] == team_b)][:10]
         w_h2h = sum(1 for g in h2h if (g['homeTeam']['abbrev'] == team_a and g['homeTeam']['score'] > g['awayTeam']['score']) or (g['awayTeam']['abbrev'] == team_a and g['awayTeam']['score'] > g['homeTeam']['score']))
-        ga_vs = round(sum(g['homeTeam']['score'] if g['awayTeam']['abbrev'] == team_a else g['awayTeam']['score'] for g in h2h) / len(h2h), 2) if h2h else 3.0
+        ga_vs = round(sum(g['homeTeam']['score'] if g['awayTeam']['abbrev'] == team_a else g['awayTeam']['score'] for g in h2h) / len(h2h) , 2) if h2h else 3.0
         return gaa_10, w_h2h, len(h2h), 5.8, ga_vs
     except: return 3.2, 0, 0, 5.5, 3.0
 
 # --- 3. INTERFACE ---
 st.title("🏒 ANALYSE POINTEURS NHL")
-date_match = st.date_input("Date du scan :", value=datetime.strptime("2026-04-18", "%Y-%m-%d"))
+date_match = st.date_input("Date du scan :", value=datetime.now())
 
 if st.button('LANCER LE SCAN 🚀', use_container_width=True):
     stats_ligue = obtenir_stats_ligue()
@@ -93,9 +93,21 @@ if st.button('LANCER LE SCAN 🚀', use_container_width=True):
                     for p in (roster.get('forwards', []) + roster.get('defensemen', [])):
                         try:
                             logs = requests.get(f"https://api-web.nhle.com/v1/player/{p['id']}/game-log/now").json().get('gameLog', [])
-                            if len(logs) < 15: continue
+                            if len(logs) < 20: continue
                             
-                            dyn = {"ratio": sum(1 for m in logs[:20] if m['points'] > 0)/20, "count": sum(1 for m in logs[:20] if m['points'] > 0)}
+                            # Logique de pertinence (Palier dynamique)
+                            p5 = sum(1 for m in logs[:5] if m['points'] > 0)
+                            p10 = sum(1 for m in logs[:10] if m['points'] > 0)
+                            p15 = sum(1 for m in logs[:15] if m['points'] > 0)
+                            p20 = sum(1 for m in logs[:20] if m['points'] > 0)
+                            
+                            # Choix du palier à afficher : Priorité à la série "Hot"
+                            if p5 >= 4: palier_display = f"{p5}/5"
+                            elif p10 >= 8: palier_display = f"{p10}/10"
+                            elif p15 >= 12: palier_display = f"{p15}/15"
+                            else: palier_display = f"{p20}/20"
+
+                            dyn = {"ratio": p20/20, "count": p20}
                             reb = verifier_rebond_expert(logs)
                             l10_loc = sum(1 for m in [m for m in logs if m['homeRoadFlag'] == ('H' if team == h else 'R')][:10] if m['points'] > 0)
                             h5 = sum(1 for m in [m for m in logs if m['opponentAbbrev'] == opp][:5] if m['points'] > 0)
@@ -108,7 +120,7 @@ if st.button('LANCER LE SCAN 🚀', use_container_width=True):
                                     'id': p['id'],
                                     'nom': f"{p['firstName']['default']} {p['lastName']['default']}",
                                     'team': team, 'opp': opp, 'note': note, 'reb': reb, 
-                                    'dyn_count': dyn['count'], 'h5': h5, 'gaa': m_o[0], 
+                                    'palier': palier_display, 'h5': h5, 'gaa': m_o[0], 
                                     'ga_h2h': m_o[4], 'w_h2h': m_t[1], 't_h2h': m_t[2],
                                     'loc': loc_label, 'l10_loc': l10_loc, 'avg': m_t[3]
                                 })
@@ -122,28 +134,19 @@ if st.button('LANCER LE SCAN 🚀', use_container_width=True):
             for p in top_20:
                 with st.container(border=True):
                     col_img, col_info = st.columns([1, 2])
-                    
                     with col_img:
-                        url_photo = f"https://assets.nhle.com/mugs/nhl/latest/{p['id']}.png"
-                        st.image(url_photo, width=110)
-                    
+                        st.image(f"https://assets.nhle.com/mugs/nhl/latest/{p['id']}.png", width=110)
                     with col_info:
                         st.markdown(f"## {p['nom'].upper()}")
                         st.markdown(f"<h3 style='color:#FFD700; margin-bottom:0;'>{obtenir_etoiles(p['note'])}</h3>", unsafe_allow_html=True)
                         st.caption(f"Note : {p['note']}/100 | {p['team']} vs {p['opp']}")
 
                     st.markdown("---")
-                    
-                    # --- STATS BRUTES ---
-                    st.write(f"📈 **RÉGULARITÉ** : {p['dyn_count']}/20 | {p['loc']} ({p['l10_loc']}/10)")
+                    st.write(f"📈 **RÉGULARITÉ** : a pointé dans {p['palier']} matchs | {p['loc']} ({p['l10_loc']}/10)")
                     
                     reb_txt = "OUI" if p['reb'] else "NON"
                     st.write(f"🎯 **PATTERN** : {reb_txt}")
-                    
                     st.write(f"⚔️ **FACE-A-FACE** : {p['h5']}/5 | Victoires Équipe : {p['w_h2h']}/{p['t_h2h']} | Matchup : {p['avg']} G/G")
-                    
                     st.write(f"🛡️ **DÉFENSE ADVERSE** : {p['gaa']} GA/G | vs {p['team']} : {p['ga_h2h']} GA/G")
-                    
-
         else:
             st.error("Aucun résultat.")
