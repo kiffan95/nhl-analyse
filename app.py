@@ -57,7 +57,7 @@ def obtenir_matchup_data(team_a, team_b):
     except: return 3.2, 0, 0, 5.5, 3.0
 
 # --- 3. INTERFACE ---
-st.title("🏒 NHL SCANNER PRO")
+st.title("🏒 ANALYSE POINTEURS NHL")
 date_match = st.date_input("Date du scan :", value=datetime.strptime("2026-04-18", "%Y-%m-%d"))
 
 if st.button('LANCER LE SCAN 🚀', use_container_width=True):
@@ -125,13 +125,13 @@ if st.button('LANCER LE SCAN 🚀', use_container_width=True):
                     st.write(f"📈 **RÉGULARITÉ** : {p['dyn_count']}/20")
                     
                     reb_txt = "OUI" if p['reb'] else "NON"
-                    st.write(f"🎯 **PATTERN REBOND** : {reb_txt}")
+                    st.write(f"🎯 **PATTERN** : {reb_txt}")
                     
                     st.write(f"⚔️ **FACE-A-FACE** : {p['h5']}/5 | Victoires Équipe : {p['w_h2h']}/{p['t_h2h']}")
                     
-                    st.write(f"🛡️ **DÉFENSE ADVERSE** : {p['gaa']} GA/G | vs {p['team']} : {p['ga_h2h']} GA/G")
+                    st.write(f"🛡️ **DÉFENSE ADVERSE** : {p['gaa']} GA/G | vs {p['team']} : {p['ga_h2h']} GA/G") | Matchup {p['avg']} G/G")
                     
-                    st.write(f"🏟️ **CONTEXTE** : {p['loc']} ({p['l10_loc']}/10) | Matchup {p['avg']} G/G")
+                    st.write(f"🏟️ **CONTEXTE** : {p['loc']} ({p['l10_loc']}/10) 
 
         else:
             st.error("Aucun résultat.")
