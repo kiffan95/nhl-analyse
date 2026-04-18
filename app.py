@@ -3,7 +3,11 @@ import requests
 from datetime import datetime
 
 # --- CONFIGURATION DE LA PAGE ---
-st.set_page_config(page_title="NHL Scanner Pro", layout="centered")
+st.set_page_config(
+    page_title="ANALYSE NHL", 
+    page_icon="🏒", 
+    layout="centered"
+)
 
 # --- SYSTÈME D'ÉTOILES (75+ = 6 etoiles / 65+ = 5 etoiles) ---
 def obtenir_etoiles(note):
