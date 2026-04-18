@@ -4,10 +4,19 @@ from datetime import datetime
 
 # --- CONFIGURATION DE LA PAGE ---
 st.set_page_config(
-    page_title="ANALYSE NHL", 
-    page_icon="🏒", 
+    page_title="ANALYSE NHL",  # Ce titre remplacera le gros texte bleu
+    page_icon="🏒",
     layout="centered"
 )
+
+# --- CACHER LE RESTE (Menu, Header, Footer) ---
+st.markdown("""
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    </style>
+    """, unsafe_allow_html=True)
 
 # --- SYSTÈME D'ÉTOILES (75+ = 6 etoiles / 65+ = 5 etoiles) ---
 def obtenir_etoiles(note):
