@@ -26,11 +26,11 @@ def obtenir_etoiles(note):
     elif note >= 45: return "⭐⭐⭐"
     else: return "⭐⭐"
 
-# --- 1. TON ALGO ORIGINAL MODIFIÉ (LOGIQUE 40/25/10/20/5) ---
+# --- 1. ALGO AVEC POIDS MODIFIÉS (40/25/10/20/5) ---
 def calculer_score_final(dyn, h5, l10_loc, reb_exp, opp_gaa_10, avg_h2h, pp_val, pk_opp, w_h2h):
     score = (dyn['ratio'] * 100 * 0.40) 
-    score += (h5 * 20 * 0.25)  # Changé de 0.20 à 0.25 (25%)
-    score += (l10_loc * 10 * 0.10) # Changé de 0.15 à 0.10 (10%)
+    score += (h5 * 20 * 0.25)          # Poids H2H à 25%
+    score += (l10_loc * 10 * 0.10)     # Poids Localisation à 10%
     score += (min(opp_gaa_10 / 4.5, 1) * 100 * 0.20) 
     score += (w_h2h * 5 * 0.05)
     
@@ -101,7 +101,6 @@ if st.button('LANCER LE SCAN 🚀', use_container_width=True):
                             p15 = sum(1 for m in logs[:15] if m['points'] > 0)
                             p20 = sum(1 for m in logs[:20] if m['points'] > 0)
                             
-                            # Choix du palier à afficher : Priorité à la série "Hot"
                             if p5 >= 4: palier_display = f"{p5}/5"
                             elif p10 >= 8: palier_display = f"{p10}/10"
                             elif p15 >= 12: palier_display = f"{p15}/15"
@@ -110,7 +109,11 @@ if st.button('LANCER LE SCAN 🚀', use_container_width=True):
                             dyn = {"ratio": p20/20, "count": p20}
                             reb = verifier_rebond_expert(logs)
                             l10_loc = sum(1 for m in [m for m in logs if m['homeRoadFlag'] == ('H' if team == h else 'R')][:10] if m['points'] > 0)
-                            h5 = sum(1 for m in [m for m in logs if m['opponentAbbrev'] == opp][:5] if m['points'] > 0)
+                            
+                            # --- CORRECTION H2H : Uniquement matchs où le joueur était présent ---
+                            matchs_joues_vs_opp = [m for m in logs if m['opponentAbbrev'] == opp]
+                            h5 = sum(1 for m in matchs_joues_vs_opp[:5] if m['points'] > 0)
+                            
                             m_t, m_o = memo[team], memo[opp]
                             
                             note = calculer_score_final(dyn, h5, l10_loc, reb, m_o[0], m_t[3], stats_ligue.get(team, {}).get('pp', 0), stats_ligue.get(opp, {}).get('pk', 0), m_t[1])
@@ -122,7 +125,8 @@ if st.button('LANCER LE SCAN 🚀', use_container_width=True):
                                     'team': team, 'opp': opp, 'note': note, 'reb': reb, 
                                     'palier': palier_display, 'h5': h5, 'gaa': m_o[0], 
                                     'ga_h2h': m_o[4], 'w_h2h': m_t[1], 't_h2h': m_t[2],
-                                    'loc': loc_label, 'l10_loc': l10_loc, 'avg': m_t[3]
+                                    'loc': loc_label, 'l10_loc': l10_loc, 'avg': m_t[3],
+                                    'nb_matchs_h2h': len(matchs_joues_vs_opp[:5])
                                 })
                         except: continue
                 except: continue
@@ -146,7 +150,7 @@ if st.button('LANCER LE SCAN 🚀', use_container_width=True):
                     
                     reb_txt = "OUI" if p['reb'] else "NON"
                     st.write(f"🎯 **PATTERN** : ➤ {reb_txt} (15 derniers matchs)")
-                    st.write(f"⚔️ **FACE-A-FACE** : ➤ a pointé dans {p['h5']} des 5 dernières confrontations ➤ Moyenne de {p['avg']} buts entre les deux équipes")
+                    st.write(f"⚔️ **FACE-A-FACE** : ➤ a pointé dans {p['h5']} sur ses {p['nb_matchs_h2h']} dernières présences vs {p['opp']} ➤ Moyenne de {p['avg']} buts entre les deux équipes")
                     st.write(f"🛡️ **DÉFENSE ADVERSE** : ➤ encaisse en moyenne {p['gaa']} (10 derniers matchs) ➤ encaisse en moyenne {p['ga_h2h']} contre {p['team']}")
         else:
             st.error("Aucun résultat.")
