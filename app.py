@@ -129,9 +129,9 @@ if st.button('LANCER LE SCAN 🚀', use_container_width=True):
                     
                     st.write(f"⚔️ **FACE-A-FACE** : {p['h5']}/5 | Victoires Équipe : {p['w_h2h']}/{p['t_h2h']}")
                     
-                    st.write(f"🛡️ **DÉFENSE ADVERSE** : {p['gaa']} GA/G | vs {p['team']} : {p['ga_h2h']} GA/G") | Matchup {p['avg']} G/G")
+                    st.write(f"🛡️ **DÉFENSE ADVERSE** : {p['gaa']} GA/G | vs {p['team']} : {p['ga_h2h']} GA/G | Matchup {p['avg']} G/G")") 
                     
-                    st.write(f"🏟️ **CONTEXTE** : {p['loc']} ({p['l10_loc']}/10) 
+                    st.write(f"🏟️ **CONTEXTE** : {p['loc']} ({p['l10_loc']}/10)")
 
         else:
             st.error("Aucun résultat.")
