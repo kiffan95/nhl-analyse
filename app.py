@@ -142,11 +142,11 @@ if st.button('LANCER LE SCAN 🚀', use_container_width=True):
                         st.caption(f"Note : {p['note']}/100 | {p['team']} vs {p['opp']}")
 
                     st.markdown("---")
-                    st.write(f"📈 **RÉGULARITÉ** : a pointé dans {p['palier']} matchs | {p['loc']} ({p['l10_loc']}/10)")
+                    st.write(f"📈 **RÉGULARITÉ** : a pointé dans {p['palier']} derniers matchs | , dans ({p['l10_loc']}) des 10 derniers matchs à {p['loc']}")
                     
                     reb_txt = "OUI" if p['reb'] else "NON"
-                    st.write(f"🎯 **PATTERN** : {reb_txt}")
-                    st.write(f"⚔️ **FACE-A-FACE** : {p['h5']}/5 | Victoires Équipe : {p['w_h2h']}/{p['t_h2h']} | Matchup : {p['avg']} G/G")
-                    st.write(f"🛡️ **DÉFENSE ADVERSE** : {p['gaa']} GA/G | vs {p['team']} : {p['ga_h2h']} GA/G")
+                    st.write(f"🎯 **PATTERN** : {reb_txt} (15 derniers matchs)")
+                    st.write(f"⚔️ **FACE-A-FACE** : a pointé dans {p['h5']} des 5 dernières confrontations  | {p['w_h2h']} victoires sur les {p['t_h2h']} dernières confrontations | Moyenne de {p['avg']} buts entre les deux équipes")
+                    st.write(f"🛡️ **DÉFENSE ADVERSE** : a encaissé en moyenne{p['gaa']} buts/match sur les 10 derniers matchs | encaisse en moyenne {p['ga_h2h']} buts/match contre {p['team']}")
         else:
             st.error("Aucun résultat.")
